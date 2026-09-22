@@ -9,7 +9,7 @@ class ProdutoDetailsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Nova Venda'),
       ),
-      body: const Center(
+      body: SingleChildScrollView(
         child: Text('Tela de Nova Venda'),
       ),
     );

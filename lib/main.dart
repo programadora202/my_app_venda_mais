@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/produtos_screen.dart';
-import 'screens/produto_details_screen.dart';
+import 'screens/produtos_details_screen.dart';
 import 'screens/new_sale_screen.dart';
-import 'screens/sales_completed_screen.dart';
-import 'screens/payment_screen.dart';
+import 'screens/sale_completed_screen.dart';
 
 void main() {
   runApp(const VendaApp());
@@ -21,14 +21,16 @@ class VendaApp extends StatelessWidget {
       title: 'Venda+',
 
       routes: {
-        '/Login': (context) => const LoginScreen(),
+        '/login': (context) => const LoginScreen(),
+        '/registro': (context) => const RegisterScreen(),
+
         '/home': (context) => const HomeScreen(),
         '/produtos': (context) => const ProdutosScreen(),
         '/produto_details': (context) => const ProdutoDetailsScreen(),
         '/new_sale': (context) => const NewSaleScreen(),
-        '/sales_completed': (context) => const SalesCompletedScreen(),
-        '/payment': (context) => const PaymentScreen(),
+        '/sales_completed': (context) => const SaleCompletedScreen(),
       },
+      initialRoute: '/login', //tela inicial
 
     );
   }

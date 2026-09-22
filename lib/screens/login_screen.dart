@@ -2,6 +2,11 @@ import 'package:flutter/material.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+  void login(BuildContext context) {
+    // Lógica de login aqui
+    // Após o login bem-sucedido, navegue para a tela inicial
+    Navigator.pushReplacementNamed(context, '/home');
+  }
 
   @override
   State<LoginScreen> createState() => _LoginScreenState();
@@ -10,15 +15,20 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   bool mostrarSenha = false;
 
+  void login(BuildContext context) {
+    Navigator.pushReplacementNamed(context, '/home'); //navega para a tela inicial
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return Scaffold( //scaffold é o widget que fornece a estrutura básica para a tela, incluindo barra de aplicativos, corpo e outros elementos visuais.
+      backgroundColor: Color.fromARGB(255, 255, 245, 242), //cor de fundo da tela
       body: Center(
         child: Padding(
-          padding: const EdgeInsets.all(30),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
+          padding: const EdgeInsets.all(30),//adiciona um padding de 30 px em todos os lados da tela
+          child: Column( 
+            mainAxisAlignment: MainAxisAlignment.center, //alinha os elementos no centro da tela
+            children: [ 
 
               // LOGO
               Image.asset(
@@ -56,11 +66,11 @@ class _LoginScreenState extends State<LoginScreen> {
                       color: const Color.fromARGB(255, 115, 32, 54),
                     ),
                   ),
-                  suffixIcon: IconButton(
+                  suffixIcon: IconButton( //adiciona um ícone de olho para mostrar ou ocultar a senha
                     icon: Icon(
-                      mostrarSenha
-                          ? Icons.visibility
-                          : Icons.visibility_off,
+                      mostrarSenha //if ternário para mostrar ou ocultar a senha
+                          ? Icons.visibility // Mostrar senha
+                          : Icons.visibility_off, // Ocultar senha
                       color: const Color.fromARGB(255, 115, 32, 54),
                     ),
                     onPressed: () {
@@ -72,7 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 25),
 
               // BOTÃO ENTRAR
               SizedBox(
@@ -104,7 +114,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.pushNamed(context, '/registro');
+                    },
                     child: const Text('Criar Conta',
                       style: TextStyle(
                         color: Color.fromARGB(255, 115, 32, 54),

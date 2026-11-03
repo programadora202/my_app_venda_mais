@@ -13,12 +13,32 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     return Scaffold( //scaffold é o widget que fornece a estrutura básica para a tela, incluindo barra de aplicativos, corpo e outros elementos visuais.
       backgroundColor: Color.fromARGB(255, 255, 245, 242), //cor de fundo da tela
+        appBar: AppBar(
+          backgroundColor: const Color.fromARGB(255, 115, 32, 54),
+          centerTitle: true,
+          title: const Text('Cadastro',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 25, 
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          leading: IconButton( //ícone de voltar <-
+            icon: 
+            const Icon(Icons.arrow_back),
+            color: Colors.white,
+            onPressed: () {
+              Navigator.pop(context); // Volta para a tela anterior
+            },
+          ),
+      ),
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(30), //adiciona um padding de 30 pixels em todos os lados da tela
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center, //alinha os elementos no centro da tela
             children: [
+              
 
               // LOGO
               Image.asset(
@@ -26,7 +46,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 width: 180,
               ),
               
-              const SizedBox(height: 15),
+              const SizedBox(height: 25),
 
               //NOME DA EMPRESA
               TextField(
@@ -44,7 +64,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               const SizedBox(height: 15),
               
               // NOME
-              TextField(
+              TextField( //textField é um widget que permite ao usuário inserir texto em um campo de entrada.
                 decoration: InputDecoration(
                   labelText: 'Nome',
                   border: OutlineInputBorder(
@@ -165,7 +185,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               //Link para voltar para a tela de login
               InkWell(
                 onTap: () {
-                  Navigator.pushNamed(context, '/login');
+                  Navigator.pop(context, '/login');
                 },
                 child: const Text(
                   'Já tem uma conta? Entrar',
@@ -180,25 +200,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
       ),
 
-      appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 115, 32, 54),
-        centerTitle: true,
-        title: const Text('Cadastro',
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 25, 
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        leading: IconButton( //ícone de voltar <-
-          icon: 
-          const Icon(Icons.arrow_back),
-          color: Colors.white,
-          onPressed: () {
-            Navigator.pop(context); // Volta para a tela anterior
-          },
-        ),
-      ),
+
 
     );
   }

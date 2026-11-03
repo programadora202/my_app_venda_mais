@@ -6,6 +6,7 @@ import 'screens/produtos_screen.dart';
 import 'screens/produtos_details_screen.dart';
 import 'screens/new_sale_screen.dart';
 import 'screens/sale_completed_screen.dart';
+import 'screens/relatorios_screen.dart';
 
 void main() {
   runApp(const VendaApp());
@@ -29,6 +30,7 @@ class VendaApp extends StatelessWidget {
         '/produto_details': (context) => const ProdutoDetailsScreen(),
         '/new_sale': (context) => const NewSaleScreen(),
         '/sales_completed': (context) => const SaleCompletedScreen(),
+        '/relatorios': (context) => const RelatoriosScreen(),
       },
       initialRoute: '/login', //tela inicial
 

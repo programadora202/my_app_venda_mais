@@ -6,10 +6,9 @@ import 'screens/home_screen.dart';
 import 'screens/new_sale_screen.dart';
 import 'screens/storage_and_products.dart';
 import 'screens/produtos_screen.dart';
-import 'screens/forget_password.dart';
-import 'screens/dashboard.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'screens/produtos_details_screen.dart';
+import 'screens/new_sale_screen.dart';
+import 'screens/sale_completed_screen.dart';
 
 
 Future<void> main() async {
@@ -46,9 +45,9 @@ class VendaApp extends StatelessWidget {
 
         '/new_sale': (context) => const NewSaleScreen(),
         '/produtos': (context) => const ProdutosScreen(),
-        '/storage': (context) => const StorageAndProducts(),
-        '/esqueci_senha': (context) => const ForgetPassword(),
-        '/dashboard': (context) => const Dashboard(),
+        '/produto_details': (context) => const ProdutoDetailsScreen(),
+        '/new_sale': (context) => const NewSaleScreen(),
+        '/sales_completed': (context) => const SaleCompletedScreen(),
       },
 
       initialRoute: '/login', // Tela inicial

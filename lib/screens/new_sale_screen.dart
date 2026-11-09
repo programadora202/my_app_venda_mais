@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../product_photo.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -466,11 +466,10 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(8),
-      child: Image.file(
-        File(caminho),
+      child: productPhoto(
+        caminho,
         width: tamanho,
         height: tamanho,
-        fit: BoxFit.cover,
         errorBuilder: (context, error, stackTrace) {
           return Container(
             width: tamanho,

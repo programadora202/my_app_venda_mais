@@ -17,10 +17,7 @@ import 'package:flutter/foundation.dart'
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
     if (kIsWeb) {
-      throw UnsupportedError(
-        'DefaultFirebaseOptions have not been configured for web - '
-        'you can reconfigure this by running the FlutterFire CLI again.',
-      );
+      return web;
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
@@ -50,6 +47,30 @@ class DefaultFirebaseOptions {
           'DefaultFirebaseOptions are not supported for this platform.',
         );
     }
+  }
+
+  static FirebaseOptions get web {
+    const apiKey = String.fromEnvironment('apiKey');
+    const appId = String.fromEnvironment('appId');
+    const projectId = String.fromEnvironment('projectId');
+    const senderId = String.fromEnvironment('messagingSenderId');
+    const authDomain = String.fromEnvironment('authDomain');
+    const storageBucket = String.fromEnvironment('storageBucket');
+    if (apiKey.isEmpty || !appId.contains(':web:') ||
+        projectId.isEmpty || senderId.isEmpty) {
+      throw StateError(
+        'Informe o firebaseConfig do app Web com '
+        '--dart-define-from-file=firebase-web.local.json.',
+      );
+    }
+    return FirebaseOptions(
+      apiKey: apiKey,
+      appId: appId,
+      projectId: projectId,
+      messagingSenderId: senderId,
+      authDomain: authDomain.isEmpty ? null : authDomain,
+      storageBucket: storageBucket.isEmpty ? null : storageBucket,
+    );
   }
 
   static const FirebaseOptions android = FirebaseOptions(

@@ -1,4 +1,4 @@
-import 'dart:io';
+import '../product_photo.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -101,11 +101,7 @@ class _StorageAndProductsState
       // Remove também a foto armazenada no celular.
       if (caminhoFoto != null && caminhoFoto.isNotEmpty) {
         try {
-          final arquivo = File(caminhoFoto);
-
-          if (await arquivo.exists()) {
-            await arquivo.delete();
-          }
+          await deleteProductPhoto(caminhoFoto);
         } catch (_) {
           // A exclusão do produto já foi realizada.
         }
@@ -169,11 +165,10 @@ class _StorageAndProductsState
       );
     }
 
-    return Image.file(
-      File(caminhoFoto),
+    return productPhoto(
+      caminhoFoto,
       width: 78,
       height: 90,
-      fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
         return const Icon(
           Icons.broken_image_outlined,

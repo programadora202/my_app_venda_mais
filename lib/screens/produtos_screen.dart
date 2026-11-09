@@ -1,10 +1,14 @@
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
+
+import '../browser_photo_store.dart';
+import '../product_photo.dart';
 
 class ProdutosScreen extends StatefulWidget {
   const ProdutosScreen({super.key});
@@ -34,7 +38,8 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
 
   final imagePicker = ImagePicker();
 
-  File? fotoProduto;
+  XFile? fotoProduto;
+  Uint8List? fotoBytes;
   String? fotoAnteriorPath;
   String? produtoId;
 
@@ -91,7 +96,6 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
 
     if (caminho is String && caminho.isNotEmpty) {
       fotoAnteriorPath = caminho;
-      fotoProduto = File(caminho);
     }
   }
 
@@ -156,6 +160,9 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
     return null;
   }
 
+  Widget erroFoto(BuildContext context, Object error, StackTrace? stack) =>
+      const Icon(Icons.broken_image_outlined, size: 60, color: vinho);
+
   Future<void> selecionarFoto(ImageSource origem) async {
     if (salvando || selecionandoFoto) return;
 
@@ -172,8 +179,11 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
 
       if (imagem == null || !mounted) return;
 
+      final bytes = await imagem.readAsBytes();
+      if (!mounted) return;
       setState(() {
-        fotoProduto = File(imagem.path);
+        fotoProduto = imagem;
+        fotoBytes = bytes;
         fotoAlterada = true;
       });
     } catch (e) {
@@ -202,8 +212,16 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
     await selecionarFoto(ImageSource.gallery);
   }
 
-  Future<String?> salvarFotoLocal(String id) async {
-    if (fotoProduto == null) return null;
+  Future<String?> salvarFoto(String id) async {
+    final foto = fotoProduto;
+    if (foto == null) return null;
+
+    if (kIsWeb) {
+      final key =
+          '$browserPhotoPrefix$id/${DateTime.now().microsecondsSinceEpoch}';
+      await saveBrowserPhoto(key, fotoBytes!);
+      return key;
+    }
 
     final diretorio = await getApplicationDocumentsDirectory();
 
@@ -224,7 +242,7 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
       '${id}_${DateTime.now().microsecondsSinceEpoch}$extensao',
     );
 
-    await fotoProduto!.copy(destino.path);
+    await foto.saveTo(destino.path);
 
     return destino.path;
   }
@@ -250,7 +268,7 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
 
     try {
       if (!editando || fotoAlterada) {
-        novaFotoPath = await salvarFotoLocal(referencia.id);
+        novaFotoPath = await salvarFoto(referencia.id);
       }
 
       final dados = <String, dynamic>{
@@ -283,11 +301,7 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
           fotoAnteriorPath != null &&
           fotoAnteriorPath != novaFotoPath) {
         try {
-          final antiga = File(fotoAnteriorPath!);
-
-          if (await antiga.exists()) {
-            await antiga.delete();
-          }
+          await deleteProductPhoto(fotoAnteriorPath!);
         } catch (_) {}
       }
 
@@ -326,11 +340,7 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
     } finally {
       if (!salvo && novaFotoPath != null) {
         try {
-          final arquivo = File(novaFotoPath);
-
-          if (await arquivo.exists()) {
-            await arquivo.delete();
-          }
+          await deleteProductPhoto(novaFotoPath);
         } catch (_) {}
       }
 
@@ -503,7 +513,7 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
                     color: rosaClaro,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: fotoProduto == null
+                  child: fotoBytes == null && fotoAnteriorPath == null
                       ? const Icon(
                           Icons.image_outlined,
                           size: 65,
@@ -511,20 +521,20 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
                         )
                       : ClipRRect(
                           borderRadius: BorderRadius.circular(20),
-                          child: Image.file(
-                            fotoProduto!,
-                            width: 160,
-                            height: 160,
-                            fit: BoxFit.cover,
-                            errorBuilder:
-                                (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.broken_image_outlined,
-                                size: 60,
-                                color: vinho,
-                              );
-                            },
-                          ),
+                          child: fotoBytes != null
+                              ? Image.memory(
+                                  fotoBytes!,
+                                  width: 160,
+                                  height: 160,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: erroFoto,
+                                )
+                              : productPhoto(
+                                  fotoAnteriorPath!,
+                                  width: 160,
+                                  height: 160,
+                                  errorBuilder: erroFoto,
+                                ),
                         ),
                 ),
               ),

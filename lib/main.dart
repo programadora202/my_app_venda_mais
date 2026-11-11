@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_options.dart';
 
@@ -28,34 +29,127 @@ class VendaApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Venda+',
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
 
-      initialRoute: '/login',
+      builder: (context, snapshot) {
+        // Aguarda o Firebase verificar a sessão.
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: 'Venda+',
+            home: const Scaffold(
+              backgroundColor: Color.fromARGB(255, 255, 245, 242),
+              body: Center(
+                child: CircularProgressIndicator(
+                  color: Color.fromARGB(255, 115, 32, 54),
+                ),
+              ),
+            ),
+          );
+        }
 
-      routes: {
-        '/login': (context) => const LoginScreen(),
+        // Verifica se existe um usuário autenticado.
+        final usuario = snapshot.data;
 
-        '/registro': (context) => const RegisterScreen(),
+        final nomeUsuario = usuario?.displayName?.trim().isNotEmpty == true
+            ? usuario!.displayName!.trim()
+            : usuario?.email?.split('@').first ?? 'Usuário';
 
-        '/home': (context) {
-          final userName =
-              ModalRoute.of(context)?.settings.arguments as String? ??
-              'Usuário';
+        return MaterialApp(
+          // Reinicia a navegação quando o estado de autenticação muda.
+          key: ValueKey(usuario?.uid ?? 'sem-login'),
 
-          return HomeScreen(userName: userName);
-        },
+          debugShowCheckedModeBanner: false,
+          title: 'Venda+',
 
-        '/new_sale': (context) => const NewSaleScreen(),
+          // Define a primeira tela conforme a autenticação.
+          home: usuario == null
+              ? const LoginScreen()
+              : HomeScreen(userName: nomeUsuario),
 
-        '/produtos': (context) => const ProdutosScreen(),
+          onGenerateRoute: (settings) {
+            final rota = settings.name;
+            final autenticado = usuario != null;
 
-        '/storage': (context) => const StorageAndProducts(),
+            // Impede usuários autenticados de voltarem
+            // para as telas de login e cadastro.
+            if (autenticado &&
+                (rota == '/login' ||
+                    rota == '/registro' ||
+                    rota == '/esqueci_senha')) {
+              return MaterialPageRoute(
+                builder: (context) =>
+                    HomeScreen(userName: nomeUsuario),
+              );
+            }
 
-        '/esqueci_senha': (context) => const ForgetPassword(),
+            // Libera as telas públicas sem autenticação.
+            if (!autenticado) {
+              switch (rota) {
+                case '/login':
+                  return MaterialPageRoute(
+                    builder: (context) => const LoginScreen(),
+                  );
 
-        '/dashboard': (context) => const Dashboard(),
+                case '/registro':
+                  return MaterialPageRoute(
+                    builder: (context) => const RegisterScreen(),
+                  );
+
+                case '/esqueci_senha':
+                  return MaterialPageRoute(
+                    builder: (context) => const ForgetPassword(),
+                  );
+
+                default:
+                  // Bloqueia qualquer outra rota.
+                  return MaterialPageRoute(
+                    builder: (context) => const LoginScreen(),
+                  );
+              }
+            }
+
+            // A partir daqui, somente usuários autenticados
+            // conseguem acessar as telas protegidas.
+            switch (rota) {
+              case '/home':
+                final nome = settings.arguments as String?;
+
+                return MaterialPageRoute(
+                  builder: (context) => HomeScreen(
+                    userName: nome ?? nomeUsuario,
+                  ),
+                );
+
+              case '/new_sale':
+                return MaterialPageRoute(
+                  builder: (context) => const NewSaleScreen(),
+                );
+
+              case '/produtos':
+                return MaterialPageRoute(
+                  builder: (context) => const ProdutosScreen(),
+                );
+
+              case '/storage':
+                return MaterialPageRoute(
+                  builder: (context) => const StorageAndProducts(),
+                );
+
+              case '/dashboard':
+                return MaterialPageRoute(
+                  builder: (context) => const Dashboard(),
+                );
+
+              default:
+                return MaterialPageRoute(
+                  builder: (context) =>
+                      HomeScreen(userName: nomeUsuario),
+                );
+            }
+          },
+        );
       },
     );
   }

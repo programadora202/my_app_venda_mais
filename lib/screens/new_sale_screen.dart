@@ -1,6 +1,8 @@
+
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class NewSaleScreen extends StatefulWidget {
@@ -28,6 +30,7 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
   final List<ItemVenda> carrinho = [];
 
   String pesquisa = '';
+  String? formaPagamentoSelecionada;
   bool finalizando = false;
 
   @override
@@ -92,6 +95,19 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
     );
   }
 
+  String nomeFormaPagamento(String forma) {
+    switch (forma) {
+      case 'credito':
+        return 'Cartão de crédito';
+      case 'debito':
+        return 'Cartão de débito';
+      case 'dinheiro_pix':
+        return 'Dinheiro / Pix';
+      default:
+        return 'Não informado';
+    }
+  }
+
   void mensagem(String texto, {bool erro = false}) {
     if (!mounted) return;
 
@@ -99,6 +115,71 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
       SnackBar(
         content: Text(texto),
         backgroundColor: erro ? Colors.red : vinho,
+      ),
+    );
+  }
+
+  Widget opcaoPagamento({
+    required String valor,
+    required String titulo,
+    required IconData icone,
+  }) {
+    final selecionado = formaPagamentoSelecionada == valor;
+
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: finalizando
+            ? null
+            : () {
+                setState(() {
+                  formaPagamentoSelecionada = valor;
+                });
+              },
+        child: Container(
+          height: 88,
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          padding: const EdgeInsets.symmetric(
+            horizontal: 4,
+            vertical: 8,
+          ),
+          decoration: BoxDecoration(
+            color: selecionado ? rosaClaro : Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color: selecionado ? vinho : Colors.black12,
+              width: selecionado ? 2 : 1,
+            ),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                icone,
+                color: vinho,
+                size: 25,
+              ),
+              const SizedBox(height: 5),
+              Text(
+                titulo,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 11,
+                  fontWeight: selecionado
+                      ? FontWeight.bold
+                      : FontWeight.normal,
+                  color: vinho,
+                ),
+              ),
+              if (selecionado)
+                const Icon(
+                  Icons.check_circle,
+                  color: vinho,
+                  size: 14,
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -245,6 +326,17 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
   Future<void> finalizarVenda() async {
     if (finalizando || carrinho.isEmpty) return;
 
+    // Verifica se a forma de pagamento foi selecionada.
+    if (formaPagamentoSelecionada == null) {
+      mensagem(
+        'Selecione uma forma de pagamento antes de finalizar.',
+        erro: true,
+      );
+      return;
+    }
+
+    final formaPagamento = formaPagamentoSelecionada!;
+
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (dialogContext) {
@@ -253,7 +345,9 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
           content: Text(
             'Confirmar a venda de $totalItens '
             'peça(s) no valor de '
-            'R\$ ${moeda(totalVenda)}?',
+            'R\$ ${moeda(totalVenda)}?\n\n'
+            'Forma de pagamento: '
+            '${nomeFormaPagamento(formaPagamento)}',
           ),
           actions: [
             TextButton(
@@ -277,11 +371,20 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
 
     if (confirmar != true || !mounted) return;
 
+    final usuario = FirebaseAuth.instance.currentUser;
+
+    if (usuario == null) {
+      mensagem(
+        'Usuário não autenticado. Faça login novamente.',
+        erro: true,
+      );
+      return;
+    }
+
     setState(() {
       finalizando = true;
     });
 
-    // Cópia dos itens para registrar a venda.
     final itens = carrinho
         .map(
           (item) => ItemVenda(
@@ -300,7 +403,6 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
     try {
       await FirebaseFirestore.instance.runTransaction(
         (transaction) async {
-          // Lê todos os produtos antes de escrever.
           final documentos = <
               String,
               DocumentSnapshot<Map<String, dynamic>>>{};
@@ -348,7 +450,6 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
               );
             }
 
-            // Usa o preço atual do cadastro.
             final precoAtual = precoProduto(produto);
 
             if (precoAtual < 0) {
@@ -393,12 +494,14 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
           }
 
           transaction.set(referenciaVenda, {
+            'usuarioId': usuario.uid,
             'itens': itensParaSalvar,
             'total': totalConfirmado,
             'quantidadeItens': itens.fold<int>(
               0,
               (soma, item) => soma + item.quantidade,
             ),
+            'formaPagamento': formaPagamento,
             'dataVenda': FieldValue.serverTimestamp(),
             'status': 'concluida',
           });
@@ -409,6 +512,7 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
 
       setState(() {
         carrinho.clear();
+        formaPagamentoSelecionada = null;
       });
 
       await showDialog<void>(
@@ -678,23 +782,45 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
               ? null
               : () => Navigator.pop(context),
         ),
+        
         actions: [
           IconButton(
+            tooltip: 'Sair da conta',
             icon: const Icon(
               Icons.logout,
               color: Colors.white,
             ),
             onPressed: finalizando
                 ? null
-                : () {
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      '/login',
-                      (route) => false,
-                    );
+                : () async {
+                    try {
+                      // Encerra a sessão do Firebase.
+                      await FirebaseAuth.instance.signOut();
+
+                      if (!mounted) return;
+
+                      // Retorna ao login e remove as telas anteriores.
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        '/login',
+                        (route) => false,
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Não foi possível sair da conta. Tente novamente.',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   },
           ),
         ],
+
       ),
       body: SafeArea(
         child: Column(
@@ -717,8 +843,7 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
                   filled: true,
                   fillColor: Colors.white,
                   border: OutlineInputBorder(
-                    borderRadius:
-                        BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
               ),
@@ -829,8 +954,7 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
                       ),
                     )
                   : ListView.builder(
-                      padding:
-                          const EdgeInsets.symmetric(
+                      padding: const EdgeInsets.symmetric(
                         horizontal: 12,
                       ),
                       itemCount: carrinho.length,
@@ -844,7 +968,7 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
 
             Container(
               padding: const EdgeInsets.fromLTRB(
-                16, 12, 16, 16,
+                12, 8, 12, 12,
               ),
               decoration: const BoxDecoration(
                 color: Colors.white,
@@ -856,7 +980,61 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
                 ],
               ),
               child: Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
+                  ExpansionTile(
+                    initiallyExpanded: false,
+                    tilePadding: const EdgeInsets.symmetric(
+                      horizontal: 4,
+                    ),
+                    childrenPadding: const EdgeInsets.only(
+                      bottom: 8,
+                    ),
+                    leading: const Icon(
+                      Icons.payment,
+                      color: vinho,
+                    ),
+                    title: const Text(
+                      'Forma de pagamento',
+                      style: TextStyle(
+                        color: vinho,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                    subtitle: Text(
+                      formaPagamentoSelecionada == null
+                          ? 'Selecione uma opção'
+                          : nomeFormaPagamento(
+                              formaPagamentoSelecionada!,
+                            ),
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    children: [
+                      Row(
+                        children: [
+                          opcaoPagamento(
+                            valor: 'credito',
+                            titulo: 'Crédito',
+                            icone: Icons.credit_card,
+                          ),
+                          opcaoPagamento(
+                            valor: 'debito',
+                            titulo: 'Débito',
+                            icone: Icons.credit_card,
+                          ),
+                          opcaoPagamento(
+                            valor: 'dinheiro_pix',
+                            titulo: 'Dinheiro / Pix',
+                            icone: Icons.payments_outlined,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const Divider(height: 12),
+
                   Row(
                     mainAxisAlignment:
                         MainAxisAlignment.spaceBetween,
@@ -893,16 +1071,14 @@ class _NewSaleScreenState extends State<NewSaleScreen> {
                         backgroundColor: vinho,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(25),
+                          borderRadius: BorderRadius.circular(25),
                         ),
                       ),
                       child: finalizando
                           ? const SizedBox(
                               width: 24,
                               height: 24,
-                              child:
-                                  CircularProgressIndicator(
+                              child: CircularProgressIndicator(
                                 strokeWidth: 3,
                                 color: Colors.white,
                               ),

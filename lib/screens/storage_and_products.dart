@@ -1,6 +1,8 @@
+
 import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class StorageAndProducts extends StatefulWidget {
@@ -11,8 +13,7 @@ class StorageAndProducts extends StatefulWidget {
       _StorageAndProductsState();
 }
 
-class _StorageAndProductsState
-    extends State<StorageAndProducts> {
+class _StorageAndProductsState extends State<StorageAndProducts> {
   static const vinho = Color.fromARGB(255, 115, 32, 54);
   static const rosaClaro = Color.fromARGB(255, 247, 232, 225);
   static const fundo = Color.fromARGB(255, 255, 245, 242);
@@ -25,6 +26,7 @@ class _StorageAndProductsState
       FirebaseFirestore.instance.collection('produtos');
 
   String pesquisa = '';
+  bool saindo = false;
 
   @override
   void dispose() {
@@ -33,22 +35,62 @@ class _StorageAndProductsState
   }
 
   String formatarPreco(dynamic valor) {
-    final numero = (valor as num?)?.toDouble() ?? 0;
-
+    final numero = valor is num ? valor.toDouble() : 0.0;
     return numero.toStringAsFixed(2).replaceAll('.', ',');
   }
 
-  Map<String, int> obterEstoque(
-    Map<String, dynamic> produto,
-  ) {
-    final dados = Map<String, dynamic>.from(
-      produto['estoque'] ?? {},
-    );
+  Map<String, int> obterEstoque(Map<String, dynamic> produto) {
+    final estoqueOriginal = produto['estoque'];
+
+    final Map<String, dynamic> dados;
+
+    if (estoqueOriginal is Map) {
+      dados = Map<String, dynamic>.from(estoqueOriginal);
+    } else {
+      dados = {};
+    }
 
     return {
       for (final tamanho in tamanhos)
-        tamanho: (dados[tamanho] as num?)?.toInt() ?? 0,
+        tamanho: dados[tamanho] is num
+            ? (dados[tamanho] as num).toInt()
+            : 0,
     };
+  }
+
+  Future<void> sairDaConta() async {
+    if (saindo) return;
+
+    setState(() {
+      saindo = true;
+    });
+
+    try {
+      await FirebaseAuth.instance.signOut();
+
+      if (!mounted) return;
+
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        '/login',
+        (route) => false,
+      );
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        saindo = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Não foi possível sair da conta. Tente novamente.',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> confirmarExclusao(
@@ -66,8 +108,7 @@ class _StorageAndProductsState
             'o produto "$nome"?\n\n'
             'Esta ação não poderá ser desfeita.',
           ),
-          actionsAlignment:
-              MainAxisAlignment.spaceBetween,
+          actionsAlignment: MainAxisAlignment.spaceBetween,
           actions: [
             TextButton(
               onPressed: () {
@@ -107,7 +148,7 @@ class _StorageAndProductsState
             await arquivo.delete();
           }
         } catch (_) {
-          // A exclusão do produto já foi realizada.
+          // O produto já foi excluído do Firebase.
         }
       }
 
@@ -115,9 +156,7 @@ class _StorageAndProductsState
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text(
-            'Produto excluído com sucesso.',
-          ),
+          content: Text('Produto excluído com sucesso.'),
           backgroundColor: Colors.green,
         ),
       );
@@ -126,9 +165,7 @@ class _StorageAndProductsState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Erro no Firebase: ${e.code}',
-          ),
+          content: Text('Erro no Firebase: ${e.code}'),
           backgroundColor: Colors.red,
         ),
       );
@@ -137,9 +174,7 @@ class _StorageAndProductsState
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(
-            'Erro ao excluir produto: $e',
-          ),
+          content: Text('Erro ao excluir produto: $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -184,15 +219,10 @@ class _StorageAndProductsState
     );
   }
 
-  Widget construirTamanho(
-    String tamanho,
-    int quantidade,
-  ) {
+  Widget construirTamanho(String tamanho, int quantidade) {
     return Expanded(
       child: Container(
-        margin: const EdgeInsets.symmetric(
-          horizontal: 2,
-        ),
+        margin: const EdgeInsets.symmetric(horizontal: 2),
         padding: const EdgeInsets.symmetric(
           vertical: 10,
           horizontal: 2,
@@ -278,8 +308,7 @@ class _StorageAndProductsState
 
                 Expanded(
                   child: Column(
-                    crossAxisAlignment:
-                        CrossAxisAlignment.start,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         nome,
@@ -293,9 +322,7 @@ class _StorageAndProductsState
                       if (codigo.isNotEmpty)
                         Text(
                           'Código: $codigo',
-                          style: const TextStyle(
-                            fontSize: 12,
-                          ),
+                          style: const TextStyle(fontSize: 12),
                         ),
 
                       const SizedBox(height: 5),
@@ -312,9 +339,7 @@ class _StorageAndProductsState
 
                       Text(
                         '$total unidades no estoque',
-                        style: const TextStyle(
-                          fontSize: 13,
-                        ),
+                        style: const TextStyle(fontSize: 13),
                       ),
                     ],
                   ),
@@ -346,8 +371,7 @@ class _StorageAndProductsState
             const SizedBox(height: 15),
 
             Row(
-              mainAxisAlignment:
-                  MainAxisAlignment.spaceBetween,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 OutlinedButton.icon(
                   onPressed: () {
@@ -357,9 +381,7 @@ class _StorageAndProductsState
                       caminhoFoto,
                     );
                   },
-                  icon: const Icon(
-                    Icons.delete_outline,
-                  ),
+                  icon: const Icon(Icons.delete_outline),
                   label: const Text('Excluir'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.red,
@@ -373,9 +395,7 @@ class _StorageAndProductsState
                       produto,
                     );
                   },
-                  icon: const Icon(
-                    Icons.edit_outlined,
-                  ),
+                  icon: const Icon(Icons.edit_outlined),
                   label: const Text('Editar'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: vinho,
@@ -411,21 +431,17 @@ class _StorageAndProductsState
             color: Colors.white,
           ),
           onPressed: () {
-            Navigator.pop(context); // Volta para a tela home
+            Navigator.pop(context);
           },
         ),
         actions: [
           IconButton(
+            tooltip: 'Sair da conta',
+            onPressed: saindo ? null : sairDaConta,
             icon: const Icon(
               Icons.logout,
               color: Colors.white,
             ),
-            onPressed: () {
-              Navigator.pushReplacementNamed(
-                context,
-                '/login',
-              );
-            },
           ),
         ],
       ),
@@ -450,8 +466,7 @@ class _StorageAndProductsState
                 filled: true,
                 fillColor: rosaClaro,
                 border: OutlineInputBorder(
-                  borderRadius:
-                      BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
             ),
@@ -465,15 +480,20 @@ class _StorageAndProductsState
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(
-                    child: Text(
-                      'Erro ao carregar produtos:\n'
-                      '${snapshot.error}',
-                      textAlign: TextAlign.center,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Text(
+                        'Erro ao carregar produtos:\n'
+                        '${snapshot.error}',
+                        textAlign: TextAlign.center,
+                      ),
                     ),
                   );
                 }
 
-                if (!snapshot.hasData) {
+                if (snapshot.connectionState ==
+                        ConnectionState.waiting &&
+                    !snapshot.hasData) {
                   return const Center(
                     child: CircularProgressIndicator(
                       color: vinho,
@@ -481,8 +501,13 @@ class _StorageAndProductsState
                   );
                 }
 
-                final produtos =
-                    snapshot.data!.docs.where((doc) {
+                if (!snapshot.hasData) {
+                  return const Center(
+                    child: Text('Não foi possível carregar os produtos.'),
+                  );
+                }
+
+                final produtos = snapshot.data!.docs.where((doc) {
                   final dados = doc.data();
 
                   final nome = (dados['nome'] ?? '')
@@ -498,10 +523,12 @@ class _StorageAndProductsState
                 }).toList();
 
                 if (produtos.isEmpty) {
-                  return const Center(
+                  return Center(
                     child: Text(
-                      'Nenhum produto encontrado.',
-                      style: TextStyle(fontSize: 16),
+                      pesquisa.isEmpty
+                          ? 'Nenhum produto cadastrado.'
+                          : 'Nenhum produto encontrado.',
+                      style: const TextStyle(fontSize: 16),
                     ),
                   );
                 }
@@ -515,9 +542,7 @@ class _StorageAndProductsState
                   ),
                   itemCount: produtos.length,
                   itemBuilder: (context, index) {
-                    return construirCard(
-                      produtos[index],
-                    );
+                    return construirCard(produtos[index]);
                   },
                 );
               },

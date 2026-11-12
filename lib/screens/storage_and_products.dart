@@ -1,5 +1,4 @@
-
-import 'dart:io';
+import '../product_photo.dart';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -142,11 +141,7 @@ class _StorageAndProductsState extends State<StorageAndProducts> {
       // Remove também a foto armazenada no celular.
       if (caminhoFoto != null && caminhoFoto.isNotEmpty) {
         try {
-          final arquivo = File(caminhoFoto);
-
-          if (await arquivo.exists()) {
-            await arquivo.delete();
-          }
+          await deleteProductPhoto(caminhoFoto);
         } catch (_) {
           // O produto já foi excluído do Firebase.
         }
@@ -204,11 +199,10 @@ class _StorageAndProductsState extends State<StorageAndProducts> {
       );
     }
 
-    return Image.file(
-      File(caminhoFoto),
+    return productPhoto(
+      caminhoFoto,
       width: 78,
       height: 90,
-      fit: BoxFit.cover,
       errorBuilder: (context, error, stackTrace) {
         return const Icon(
           Icons.broken_image_outlined,

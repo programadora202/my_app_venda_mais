@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path_provider/path_provider.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import '../browser_photo_store.dart';
 import '../product_photo.dart';
 
@@ -475,12 +475,31 @@ class _ProdutosScreenState extends State<ProdutosScreen> {
             ),
             onPressed: salvando
                 ? null
-                : () {
-                    Navigator.pushNamedAndRemoveUntil(
-                      context,
-                      '/login',
-                      (route) => false,
-                    );
+                : () async {
+                    try {
+                      // Encerra a sessão do usuário no Firebase.
+                      await FirebaseAuth.instance.signOut();
+
+                      if (!mounted) return;
+
+                      // Vai para o Login e limpa o histórico de navegação.
+                      Navigator.pushNamedAndRemoveUntil(
+                        context,
+                        '/login',
+                        (route) => false,
+                      );
+                    } catch (e) {
+                      if (!mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Não foi possível sair da conta. Tente novamente.',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   },
           ),
         ],
